@@ -5,6 +5,32 @@
 var EPSG4326 = new OpenLayers.Projection("EPSG:4326"); 
 var EPSG900913 = new OpenLayers.Projection("EPSG:900913"); 
 
+
+function onPopupClose(evt) {
+    selectControl.unselect(selectedFeature);
+}
+function onFeatureSelect(feature) {
+    selectedFeature = feature;
+    popup = new OpenLayers.Popup.FramedCloud("chicken", 
+                             feature.geometry.getBounds().getCenterLonLat(),
+                             null,
+                             "<div>" +
+                             "<b>Name: " + feature.attributes.name + "</b>" +
+                             "<br>ID: " + feature.attributes.idstation +
+                             "<br>Direction: " + feature.attributes.direction + 
+                             "<br>Bases: " + feature.attributes.bases +
+                             "<br>Free: " + feature.attributes.free + 
+                             "</div>",
+                             null, true, onPopupClose);
+    feature.popup = popup;
+    map.addPopup(popup);
+}
+function onFeatureUnselect(feature) {
+    map.removePopup(feature.popup);
+    feature.popup.destroy();
+    feature.popup = null;
+}    
+
 var map = new OpenLayers.Map({
     div: "map",
     layers: [
@@ -37,6 +63,14 @@ var bikeStationLayer = new OpenLayers.Layer.Vector("BiciMad Station",
 });
 
 map.addLayers([bikeStationLayer]);
+var selectControl = new OpenLayers.Control.SelectFeature(bikeStationLayer,
+{
+	onSelect: onFeatureSelect, 
+	onUnselect: onFeatureUnselect
+});
+map.addControl(selectControl);
+
+selectControl.activate();
 
 var bikeIconContext = 
 {
@@ -44,10 +78,12 @@ var bikeIconContext =
      {
 		 var freeStations = (feature.attributes.free / feature.attributes.bases) * 100;
 		 
-		 if (freeStations < 25)
+		 if (freeStations == 0)
+			 return '/GeoBiciMadrid/img/bikestationBlack.png';
+		 else if (freeStations <= 30)
 			 return '/GeoBiciMadrid/img/bikestationRed.png';
-		 else if (freeStations < 50)
-			 return '/GeoBiciMadrid/img/bikestationYellow.png';
+		 else if (freeStations <= 70)
+			 return '/GeoBiciMadrid/img/bikestationOrange.png';
 		 else 
 			 return '/GeoBiciMadrid/img/bikestationGreen.png';		 
 	}, 
@@ -76,11 +112,13 @@ var bikeStationStyle = new OpenLayers.Style({
 	graphicWidth: '${getGraphicWidth}',
 	graphicHeight: '${getGraphicHeight}',
 	label: '${getLabel}',
-	fontFamily: "Arial",
+	fontFamily: 'Verdana',
 	fontSize: '11px',
-	labelYOffset: -25,
-	labelOutlineColor: "white",
-	labelOutlineWidth: 3
+	fontWeight: 'bold',
+	fontColor: 'white',
+    labelYOffset: -25,
+	labelOutlineColor: 'black',
+	labelOutlineWidth: 4
   }, { context: bikeIconContext });
 
 bikeStationLayer.styleMap = new OpenLayers.StyleMap({
@@ -88,15 +126,15 @@ bikeStationLayer.styleMap = new OpenLayers.StyleMap({
 });
 
 var timeout;
-bikeStationLayer.events.register('loadend', bikeStationLayer, function(e) {
-	// Quito el antiguo timeout para cambiarlo segun el zoom
-    if(timeout) {
-      window.clearTimeout(timeout);
-    }
-
-    //timeout = window.setTimeout("resourcesLayer.refresh({force:true, params: { 'rand': Math.random()} })", interval);
-    timeout = window.setTimeout(function() { 
-    	bikeStationLayer.refresh({force:true, params: { 'rand': Math.random()} });
-	}, 10000);
+bikeStationLayer.events.register('loadstart', bikeStationLayer, function(e) {
+	document.getElementById("loading").style.display="block";
 });
+bikeStationLayer.events.register('loadend', bikeStationLayer, function(e) {
+	document.getElementById("loading").style.display="none";
+});
+
+var timeout = window.setInterval(function() {
+	if (map.popups.length == 0)
+		bikeStationLayer.refresh({force:true, params: { 'rand': Math.random()} });		
+}, 15000);
 

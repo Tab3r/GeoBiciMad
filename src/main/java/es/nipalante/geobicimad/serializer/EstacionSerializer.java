@@ -22,6 +22,14 @@ public class EstacionSerializer extends JsonSerializer<OriginalJsonResponse> {
 		jgen.writeStartObject();
 		jgen.writeFieldName( "type" );
 		jgen.writeString( "FeatureCollection" );
+		// Adding the projection 
+		jgen.writeFieldName("properties");
+		jgen.writeStartObject();
+		jgen.writeFieldName("name");
+		jgen.writeString( "urn:ogc:def:crs:OGC:1.3:CRS84" );
+		jgen.writeEndObject();
+		
+		// Features;
 		jgen.writeFieldName( "features" );
 		
 		jgen.writeStartArray();
